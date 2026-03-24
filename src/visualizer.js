@@ -408,8 +408,6 @@ function syphonAsyncFrame(gl) {
     // Overlays live exclusively on the alpha/overlay Syphon server.
     if (!syphonOverlayEnabled) compositeOverlayIntoSyphonBuf(w, h);
     window.api.syphonSendFrame(syphonPixelBuf.buffer, w, h);
-    // Overlay-only channel (transparent alpha) — runs independently of main channel
-    if (syphonOverlayEnabled) renderAlphaOverlayFrame(w, h);
   }
 
   // GPU kicks off async read into the write PBO (non-blocking)
@@ -542,6 +540,9 @@ function startRenderLoop() {
 
     // Syphon: async PBO readback — no GPU stall
     if (syphonEnabled && gl) syphonAsyncFrame(gl);
+
+    // Overlay channel runs independently — works even when main Syphon is off
+    if (syphonOverlayEnabled) renderAlphaOverlayFrame(canvas.width, canvas.height);
 
     // VU meter — send levels to controls ~15fps (every 4 rendered frames)
     if (++vuFrameCount % 4 === 0) tickVU();

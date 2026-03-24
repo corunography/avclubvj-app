@@ -1391,14 +1391,16 @@ syphonCheckbox.addEventListener('change', async () => {
 // ── Syphon Overlay controls (transparent alpha channel) ───────────────────────
 
 const syphonOverlayCheckbox = document.getElementById('syphon-overlay-enabled');
+const syphonOverlayNameInput = document.getElementById('syphon-overlay-name');
 const syphonOverlayStatusEl = document.getElementById('syphon-overlay-status');
 
 async function startSyphonOverlay() {
-  const result = await window.api.syphonOverlayStart?.('AV Club VJ Overlay');
+  const name = syphonOverlayNameInput?.value.trim() || 'AV Club VJ Overlay';
+  const result = await window.api.syphonOverlayStart?.(name);
   if (!result) return;
   if (result.ok) {
     sendToViz({ type: 'syphon-overlay-enable' });
-    syphonOverlayStatusEl.textContent = 'Broadcasting as "AV Club VJ Overlay"';
+    syphonOverlayStatusEl.textContent = `Broadcasting as "${name}"`;
     syphonOverlayStatusEl.style.color = '#30d158';
   } else {
     syphonOverlayStatusEl.textContent = `Error: ${result.error}`;
@@ -1410,7 +1412,7 @@ async function startSyphonOverlay() {
 async function stopSyphonOverlay() {
   sendToViz({ type: 'syphon-overlay-disable' });
   await window.api.syphonOverlayStop?.();
-  syphonOverlayStatusEl.textContent = 'Off — broadcasts overlays with transparent background as "AV Club VJ Overlay"';
+  syphonOverlayStatusEl.textContent = 'Off — broadcasts overlays with transparent background';
   syphonOverlayStatusEl.style.color = '#6e6e73';
 }
 
@@ -1421,7 +1423,18 @@ syphonOverlayCheckbox?.addEventListener('change', async () => {
     await stopSyphonOverlay();
   }
   config.syphonOverlayEnabled = syphonOverlayCheckbox.checked;
+  config.syphonOverlayName = syphonOverlayNameInput?.value || 'AV Club VJ Overlay';
   persistConfig();
+});
+
+// Rename while running: restart overlay server with new name
+syphonOverlayNameInput?.addEventListener('change', async () => {
+  config.syphonOverlayName = syphonOverlayNameInput.value || 'AV Club VJ Overlay';
+  persistConfig();
+  if (syphonOverlayCheckbox.checked) {
+    await stopSyphonOverlay();
+    await startSyphonOverlay();
+  }
 });
 
 // ── NDI controls ──────────────────────────────────────────────────────────────
@@ -2934,6 +2947,9 @@ function pushLogoStateToRemote() {
   }
 
   // Auto-start Syphon overlay channel if it was previously enabled
+  if (syphonOverlayNameInput && config.syphonOverlayName) {
+    syphonOverlayNameInput.value = config.syphonOverlayName;
+  }
   if (config.syphonOverlayEnabled && window.api.syphonOverlayStatus) {
     const s = await window.api.syphonOverlayStatus();
     if (s.available) {
