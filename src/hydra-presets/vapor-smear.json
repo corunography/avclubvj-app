@@ -1,0 +1,4 @@
+{
+  "name": "Vapor Smear",
+  "code": "src(o0)\n  .scale(() => 1.002 + a.fft[0] * 0.01 + p1 * 0.01)\n  .rotate(() => a.fft[1] * 0.005 * p3 * 2)\n  .layer(\n    osc(() => 25 + p1 * 120 + a.fft[3] * 70, 0.03, 0.5)\n      .color(() => 1.5 + p5 * 1.5 + a.fft[3], 0.3, () => 1.5 + p5 * 1.5)\n      .mask(noise(() => 1.8 + p2 * 5 + a.fft[0] * 3).thresh(() => 0.45 + a.fft[0] * 0.3))\n  )\n  .layer(\n    osc(() => 25 + p1 * 120 + a.fft[3] * 70, 0.03, 2.1)\n      .color(0.3, () => 1.5 + p5 * 1.5 + a.fft[2], () => 1.5 + p5 * 1.5)\n      .mask(noise(() => 1.8 + p2 * 5 + a.fft[1] * 3, 0.6).thresh(() => 0.45 + a.fft[1] * 0.3))\n  )\n  .hue(() => time * 0.003 * p3 * 3)\n  .brightness(() => -0.008 + a.fft[0] * 0.005)\n  .blend(src(o0), () => 0.8 + p4 * 0.17)\n  .out(o0)"
+}

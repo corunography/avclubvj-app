@@ -1,0 +1,4 @@
+{
+  "name": "Color Wash",
+  "code": "src(o0)\n  // DENSITY: noise grain size \u2014 left=fine, right=chunky\n  .modulate(\n    noise(() => 0.3 + p1 * 5, () => 0.05 + p1 * 0.3),\n    () => 0.002 + p2 * 0.06 + a.fft[1] * 0.04\n  )\n  // DISTORT: how much warp on beats\n  .scale(() => 1.001 + a.fft[0] * 0.015 + p2 * 0.01)\n  // SPEED: hue cycle speed\n  .hue(() => time * 0.003 * p3 * 4 + a.fft[2] * 0.04 * p3 * 4)\n  // COLOR: saturation intensity\n  .saturate(() => 0.5 + p5 * 3.5 + a.fft[0] * p5 * 2)\n  .brightness(() => -0.01 + a.fft[0] * 0.008)\n  // TRAIL: how long the wash lingers\n  .blend(src(o0), () => 0.78 + p4 * 0.2)\n  .out(o0)"
+}

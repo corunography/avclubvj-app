@@ -1,0 +1,4 @@
+{
+  "name": "RGB Smear",
+  "code": "src(o0)\n  .scale(() => 1.001 + a.fft[0] * 0.015 + p1 * 0.015)\n  .rotate(() => a.fft[1] * 0.008 * p3 * 3)\n  // DENSITY: how many smear bands\n  .layer(\n    osc(() => 20 + p1 * 200 + a.fft[3] * 80, 0.02, 0)\n      .color(() => 1.5 + p5 * 2 + a.fft[3] * 2, 0, 0)\n      // DISTORT: mask sharpness\n      .mask(noise(() => 1 + p2 * 6 + a.fft[0] * 4).thresh(() => 0.4 + a.fft[0] * 0.35))\n  )\n  .layer(\n    osc(() => 20 + p1 * 200 + a.fft[3] * 80, 0.02, 0.7)\n      .color(0, () => 1.5 + p5 * 2 + a.fft[2] * 2, 0)\n      .mask(noise(() => 1 + p2 * 6 + a.fft[1] * 4, 0.5).thresh(() => 0.4 + a.fft[1] * 0.35))\n  )\n  .layer(\n    osc(() => 20 + p1 * 200 + a.fft[3] * 80, 0.02, 1.4)\n      .color(0, 0, () => 1.5 + p5 * 2 + a.fft[0] * 2)\n      .mask(noise(() => 1 + p2 * 6 + a.fft[2] * 4, 1.0).thresh(() => 0.4 + a.fft[2] * 0.35))\n  )\n  // TRAIL: smear length\n  .blend(src(o0), () => 0.75 + p4 * 0.23)\n  .out(o0)"
+}

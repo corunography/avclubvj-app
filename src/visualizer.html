@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; media-src 'self' mediastream:; img-src 'self' data: blob:">
+  <title>AV Club VJ — Output</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; overflow: hidden; background: #000; }
+    canvas { display: block; width: 100%; height: 100%; }
+    #status { display: none; }
+    #perf-hud {
+      position: fixed;
+      top: 12px;
+      right: 14px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(0,0,0,0.45);
+      backdrop-filter: blur(6px);
+      border-radius: 6px;
+      padding: 4px 8px;
+      font-family: 'SF Mono', 'Menlo', monospace;
+      font-size: 11px;
+      color: #fff;
+      opacity: 0;
+      transition: opacity 0.4s ease;
+      pointer-events: none;
+      z-index: 100;
+    }
+    #perf-hud.visible { opacity: 1; }
+    #hud-bar-wrap {
+      width: 48px; height: 4px;
+      background: rgba(255,255,255,0.15);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+    #hud-bar {
+      height: 100%;
+      width: 100%;
+      border-radius: 2px;
+      transform: scaleX(1);
+      transform-origin: left center;
+      background: #50e090;
+      transition: transform 0.5s ease, background 0.5s ease;
+    }
+    #hud-label { opacity: 0.85; letter-spacing: 0.02em; }
+    /* DOM-based marquee — GPU compositor, zero JS per frame */
+    @keyframes dom-marquee-scroll {
+      from { transform: translateX(var(--mq-start, 100vw)); }
+      to   { transform: translateX(var(--mq-end,  -200%)); }
+    }
+    #dom-marquee-bar {
+      position: fixed; left: 0; right: 0;
+      display: none; align-items: center; overflow: hidden;
+      pointer-events: none; z-index: 49;
+      will-change: opacity;
+    }
+    #dom-marquee-text {
+      white-space: nowrap; position: relative;
+      will-change: transform;
+    }
+    #qr-overlay-dom {
+      position: fixed; inset: 0;
+      display: none; flex-direction: column; align-items: center; justify-content: center;
+      pointer-events: none; z-index: 60;
+      opacity: 0;
+      transition: opacity 0.8s ease;
+    }
+    #qr-overlay-dom .qr-panel {
+      background: rgba(0,0,0,0.82);
+      border-radius: 18px;
+      padding: 24px;
+      display: flex; flex-direction: column; align-items: center; gap: 14px;
+    }
+    #qr-overlay-dom img {
+      border-radius: 8px;
+    }
+    #qr-overlay-label {
+      color: #fff;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-weight: 600;
+      text-align: center;
+    }
+    /* ── Trivia overlay ───────────────────────────────────────────────────────── */
+    #trivia-overlay {
+      position: fixed; inset: 0;
+      display: none; flex-direction: row; align-items: center; justify-content: center;
+      gap: 40px;
+      pointer-events: none; z-index: 55;
+      padding: 48px;
+      opacity: 0;
+      transition: opacity 0.5s ease;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
+    #trivia-panel {
+      background: rgba(0,0,0,0.90);
+      border-radius: 22px;
+      padding: 28px 32px;
+      flex: 1 1 0; min-width: 0; max-width: 900px;
+      display: flex; flex-direction: column; gap: 18px;
+      box-shadow: 0 8px 48px rgba(0,0,0,0.6);
+    }
+    #trivia-header {
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    #trivia-category-label {
+      font-size: 12px; color: #888;
+      text-transform: uppercase; letter-spacing: 0.1em;
+    }
+    #trivia-timer {
+      font-size: 36px; font-weight: 800; color: #fff;
+      font-variant-numeric: tabular-nums;
+      min-width: 48px; text-align: right;
+      transition: color 0.3s ease;
+    }
+    #trivia-timer.warn   { color: #ff9500; }
+    #trivia-timer.danger { color: #ff453a; }
+    #trivia-question {
+      font-size: clamp(20px, 2.8vw, 32px);
+      font-weight: 700; color: #fff;
+      line-height: 1.35; text-align: center;
+    }
+    #trivia-options-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+    }
+    .trivia-opt {
+      display: flex; align-items: center; gap: 14px;
+      background: rgba(255,255,255,0.08);
+      border-radius: 14px; padding: 14px 18px;
+      transition: background 0.5s ease, opacity 0.5s ease;
+    }
+    .trivia-opt-letter {
+      width: 32px; height: 32px; border-radius: 50%;
+      background: rgba(255,255,255,0.15); color: #fff;
+      font-size: 16px; font-weight: 800;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      transition: background 0.5s ease;
+    }
+    .trivia-opt-text {
+      font-size: clamp(14px, 1.6vw, 18px);
+      font-weight: 500; color: #fff; line-height: 1.3;
+    }
+    .trivia-opt.correct { background: rgba(52,199,89,0.28); }
+    .trivia-opt.correct .trivia-opt-letter { background: #34c759; color: #000; }
+    .trivia-opt.wrong   { opacity: 0.28; }
+    #trivia-qr-row {
+      display: none; flex-direction: column; align-items: center; justify-content: center;
+      gap: 16px; flex-shrink: 0;
+      background: rgba(0,0,0,0.82);
+      border-radius: 18px;
+      padding: 24px 28px;
+      align-self: center;
+      opacity: 0;
+      transition: opacity 0.5s ease;
+    }
+    #trivia-qr-row img { border-radius: 12px; display: block; }
+    #trivia-qr-row span {
+      color: #fff; font-size: 15px; opacity: 0.85; text-align: center;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-weight: 600;
+    }
+    /* ── Photo overlay (z-index 70, above all) ───────────────────────────────── */
+    #photo-overlay {
+      position: fixed; inset: 0;
+      display: none; align-items: center; justify-content: center;
+      pointer-events: none; z-index: 70;
+      opacity: 0;
+      transition: opacity 0.45s ease;
+      background: rgba(0,0,0,0.55);
+    }
+    #photo-frame {
+      --photo-tilt: 0deg;
+      background: #fff;
+      padding: 18px 18px 64px;
+      border-radius: 3px;
+      box-shadow: 0 20px 80px rgba(0,0,0,0.85), 0 4px 16px rgba(0,0,0,0.6);
+      display: flex; flex-direction: column; align-items: center;
+      max-width: min(88vw, 1200px);
+    }
+    #photo-img {
+      display: block;
+      max-width: 100%; max-height: 78vh;
+      border-radius: 2px;
+      object-fit: contain;
+    }
+    /* ── Photo entrance animations ── */
+    @keyframes photo-drop {
+      0%   { transform: rotate(var(--photo-tilt)) translateY(-120vh); }
+      62%  { transform: rotate(var(--photo-tilt)) translateY(16px); }
+      78%  { transform: rotate(var(--photo-tilt)) translateY(-8px); }
+      90%  { transform: rotate(var(--photo-tilt)) translateY(4px); }
+      100% { transform: rotate(var(--photo-tilt)) translateY(0); }
+    }
+    @keyframes photo-slide-left {
+      0%   { transform: rotate(var(--photo-tilt)) translateX(-120vw); }
+      78%  { transform: rotate(var(--photo-tilt)) translateX(10px); }
+      100% { transform: rotate(var(--photo-tilt)) translateX(0); }
+    }
+    @keyframes photo-slide-right {
+      0%   { transform: rotate(var(--photo-tilt)) translateX(120vw); }
+      78%  { transform: rotate(var(--photo-tilt)) translateX(-10px); }
+      100% { transform: rotate(var(--photo-tilt)) translateX(0); }
+    }
+    @keyframes photo-zoom {
+      0%   { transform: rotate(var(--photo-tilt)) scale(0.04); }
+      72%  { transform: rotate(var(--photo-tilt)) scale(1.08); }
+      100% { transform: rotate(var(--photo-tilt)) scale(1); }
+    }
+    @keyframes photo-slam {
+      0%   { transform: rotate(var(--photo-tilt)) scale(4.5); }
+      58%  { transform: rotate(var(--photo-tilt)) scale(0.95); }
+      78%  { transform: rotate(var(--photo-tilt)) scale(1.03); }
+      100% { transform: rotate(var(--photo-tilt)) scale(1); }
+    }
+    @keyframes photo-spin-drop {
+      0%   { transform: rotate(calc(var(--photo-tilt) + 380deg)) translateY(-70vh) scale(0.15); }
+      68%  { transform: rotate(calc(var(--photo-tilt) - 5deg)) translateY(10px) scale(1.05); }
+      100% { transform: rotate(var(--photo-tilt)) translateY(0) scale(1); }
+    }
+    @keyframes photo-fade {
+      0%   { transform: rotate(var(--photo-tilt)) scale(0.88); }
+      100% { transform: rotate(var(--photo-tilt)) scale(1); }
+    }
+    #photo-caption {
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-size: clamp(13px, 1.8vw, 20px);
+      color: #222;
+      text-align: center;
+      padding-top: 10px;
+      width: 100%;
+      line-height: 1.3;
+    }
+    /* Scoreboard shown after reveal */
+    #trivia-scoreboard-panel {
+      position: fixed; inset: 0;
+      display: none; align-items: center; justify-content: center;
+      pointer-events: none; z-index: 56;
+      opacity: 0; transition: opacity 0.5s ease;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
+    #trivia-scoreboard-inner {
+      background: rgba(0,0,0,0.92);
+      border-radius: 28px; padding: 48px 64px;
+      min-width: 600px; max-width: 900px; width: 70vw;
+      display: flex; flex-direction: column; gap: 18px;
+    }
+    #trivia-scoreboard-title {
+      font-size: 48px; font-weight: 900; color: #fff;
+      text-align: center; margin-bottom: 12px;
+      text-shadow: 0 2px 16px rgba(0,0,0,0.7);
+    }
+    .trivia-score-row {
+      display: flex; justify-content: space-between; align-items: center;
+      background: rgba(255,255,255,0.09);
+      border-radius: 16px; padding: 20px 28px;
+    }
+    .trivia-score-rank { font-size: 32px; font-weight: 800; color: #888; width: 56px; }
+    .trivia-score-name { font-size: 36px; font-weight: 700; color: #fff; flex: 1; margin-left: 16px; }
+    .trivia-score-pts  { font-size: 48px; font-weight: 900; color: #ffd60a; }
+  </style>
+</head>
+<body>
+  <canvas id="canvas"></canvas>
+  <canvas id="hydra-canvas" style="display:none;position:fixed;inset:0;width:100%;height:100%;"></canvas>
+  <canvas id="overlay-canvas" style="position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:50"></canvas>
+  <div id="dom-marquee-bar"><span id="dom-marquee-text"></span></div>
+  <div id="qr-overlay-dom">
+    <div class="qr-panel">
+      <img id="qr-overlay-img" src="" alt="QR Code" width="220" height="220">
+      <span id="qr-overlay-label">Scan to send a message to the screen!</span>
+    </div>
+  </div>
+  <!-- Trivia question overlay -->
+  <div id="trivia-overlay">
+    <div id="trivia-panel">
+      <div id="trivia-header">
+        <span id="trivia-category-label"></span>
+        <span id="trivia-timer">30</span>
+      </div>
+      <div id="trivia-question"></div>
+      <div id="trivia-options-grid">
+        <div class="trivia-opt" data-idx="0"><span class="trivia-opt-letter">A</span><span class="trivia-opt-text"></span></div>
+        <div class="trivia-opt" data-idx="1"><span class="trivia-opt-letter">B</span><span class="trivia-opt-text"></span></div>
+        <div class="trivia-opt" data-idx="2"><span class="trivia-opt-letter">C</span><span class="trivia-opt-text"></span></div>
+        <div class="trivia-opt" data-idx="3"><span class="trivia-opt-letter">D</span><span class="trivia-opt-text"></span></div>
+      </div>
+    </div>
+    <div id="trivia-qr-row">
+      <img id="trivia-qr-img" src="" alt="QR" width="260" height="260">
+      <span id="trivia-qr-label">📱 Scan to play trivia!</span>
+    </div>
+  </div>
+  <!-- Trivia scoreboard (shown after reveal) -->
+  <div id="trivia-scoreboard-panel">
+    <div id="trivia-scoreboard-inner">
+      <div id="trivia-scoreboard-title">🏆 Scoreboard</div>
+      <div id="trivia-scoreboard-rows"></div>
+    </div>
+  </div>
+  <!-- Photo overlay (z-index 70) -->
+  <div id="photo-overlay">
+    <div id="photo-frame">
+      <img id="photo-img" src="" alt="">
+      <div id="photo-caption"></div>
+    </div>
+  </div>
+  <div id="status" class="hidden">waiting for audio…</div>
+  <div id="perf-hud">
+    <div id="hud-bar-wrap"><div id="hud-bar"></div></div>
+    <span id="hud-label">— fps</span>
+  </div>
+  <script src="../dist/visualizer.bundle.js"></script>
+</body>
+</html>

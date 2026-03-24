@@ -1,0 +1,4 @@
+{
+  "name": "Plasma Bloom",
+  "code": "src(o0)\n  .modulate(\n    osc(() => 2 + p1 * 12, () => 0.05 + p3 * 0.25),\n    () => 0.004 + p2 * 0.05 + a.fft[1] * 0.035\n  )\n  .hue(() => time * 0.0025 * p3 * 4 + a.fft[2] * 0.025 * p3 * 3)\n  .colorama(() => a.fft[0] * 0.08 * p5 * 2)\n  .saturate(() => 1.2 + p5 * 2.5 + a.fft[0] * p5 * 1.5)\n  .brightness(() => -0.008 + a.fft[0] * 0.007)\n  .blend(src(o0), () => 0.82 + p4 * 0.15)\n  .out(o0)"
+}

@@ -1,0 +1,4 @@
+{
+  "name": "Kaleidoscope",
+  "code": "src(o0)\n  .kaleid(() => Math.floor(4 + p1 * 8))\n  .modulate(\n    noise(() => 1.5 + p1 * 3, 0.1),\n    () => 0.06 + p2 * 0.14 + a.fft[1] * 0.05\n  )\n  .scale(0.994)\n  .rotate(() => 0.006 * p3 * 2 + a.fft[1] * 0.012)\n  .hue(() => 0.003 * p3 * 2 + a.fft[2] * 0.015)\n  .saturate(() => 2 + p5 * 2.5)\n  .brightness(() => -0.006 + a.fft[0] * 0.006)\n  .out(o0)"
+}

@@ -1,0 +1,19 @@
+name = "avclubvj-photos"
+main = "photo-worker.js"
+compatibility_date = "2024-01-01"
+
+[[r2_buckets]]
+binding = "PHOTOS"
+bucket_name = "avclubvj-photos"
+
+# Deploy with:
+#   npx wrangler deploy
+#
+# First time setup:
+#   1. npm install -g wrangler
+#   2. wrangler login
+#   3. wrangler r2 bucket create avclubvj-photos
+#   4. wrangler deploy
+#
+# Your worker URL will be: https://avclubvj-photos.<your-account>.workers.dev
+# Paste it into AV Club VJ → Scrolling Text → Photo Sharing → Worker URL

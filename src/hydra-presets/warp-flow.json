@@ -1,0 +1,4 @@
+{
+  "name": "Warp Flow",
+  "code": "src(o0)\n  .modulate(\n    osc(() => 4 + p1 * 12, 0.05)\n      .rotate(() => time * 0.4 * p3 * 3 + a.fft[1] * 1.5),\n    () => 0.22 + p2 * 0.35 + a.fft[0] * 0.18\n  )\n  .scale(() => 0.994 + a.fft[0] * 0.02)\n  .hue(() => 0.004 * p3 * 3 + a.fft[2] * 0.025)\n  .saturate(() => 1.8 + p5 * 2.5 + a.fft[0] * p5)\n  .brightness(() => -0.008 + a.fft[0] * 0.006)\n  .out(o0)"
+}

@@ -1,0 +1,17 @@
+name = "avclubvj"
+main = "worker.js"
+compatibility_date = "2024-01-01"
+preview_urls = false
+
+[[r2_buckets]]
+binding = "PHOTOS"
+bucket_name = "avclubvj-photos"
+
+# Deploy steps (one-time setup):
+#   npm install -g wrangler
+#   wrangler login
+#   wrangler r2 bucket create avclubvj-photos
+#   wrangler deploy
+#
+# This updates the existing avclubvj.corunography.workers.dev worker
+# to add photo upload support. The ntfy proxy still works exactly as before.

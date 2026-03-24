@@ -1,0 +1,4 @@
+{
+  "name": "Tunnel",
+  "code": "src(o0)\n  .modulate(\n    osc(() => 6 + p1 * 18, 0.08)\n      .rotate(() => time * 0.6 * p3 * 3),\n    () => 0.28 + p2 * 0.38 + a.fft[0] * 0.2\n  )\n  .scale(() => 0.986 + a.fft[0] * 0.032)\n  .rotate(() => 0.01 * p3 * 2 + a.fft[1] * 0.02)\n  .hue(() => 0.005 * p3 + a.fft[2] * 0.025)\n  .saturate(() => 2 + p5 * 2.5 + a.fft[0] * p5)\n  .brightness(() => -0.016 + a.fft[0] * 0.014)\n  .out(o0)"
+}

@@ -1,0 +1,1046 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://api.qrserver.com; connect-src 'self' https://opentdb.com https://ntfy.sh https://api.qrserver.com">
+  <title>Controls</title>
+  <link rel="stylesheet" href="controls.css">
+</head>
+<body>
+
+  <!-- Sticky top: header + always-visible controls -->
+  <div id="sticky-top">
+    <header>
+      <span class="logo">AV Club VJ</span>
+      <span id="current-preset-name" class="current-name">—</span>
+      <span class="header-right">
+        <span id="perf-pill" class="perf-pill">
+          <span id="perf-dot" class="perf-dot"></span>
+          <span id="perf-fps">— fps</span>
+        </span>
+        <button id="btn-theme" class="btn-blackout-header" title="Toggle light/dark mode">☀️</button>
+        <button id="btn-blackout" class="btn-blackout-header">⬛</button>
+      </span>
+    </header>
+
+    <!-- Top controls — always visible -->
+    <section class="section top-pinned">
+      <div class="row" style="margin-top:6px">
+        <label class="inline-label" style="flex:1">
+          Sensitivity
+          <input type="range" id="sensitivity" min="0" max="5" step="0.1" value="1" style="flex:1;margin:0 8px">
+          <span id="sensitivity-val">1.0</span>
+        </label>
+      </div>
+      <!-- VU bar for overall signal level -->
+      <div class="vu-wrap" style="margin-top:5px">
+        <div class="vu-bar vu-overall" id="vu-sensitivity"></div>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <button id="btn-random" class="btn-primary">Random Preset</button>
+      </div>
+      <div class="row" style="margin-top:6px">
+        <button id="btn-generate-preset" class="btn btn-generate" style="flex:1">Generate New Preset</button>
+      </div>
+    </section>
+  </div>
+
+  <!-- Scrollable content area — Remote Control stays pinned below -->
+  <div id="scroll-area">
+
+  <!-- Visual Effects (collapsible) -->
+  <section class="section collapsible-section" id="sec-fx">
+    <div class="section-title section-toggle" data-sec="fx">
+      <span class="chevron">▾</span> ⚡ Visual Effects
+      <button class="btn-popout" data-sec="fx" title="Pop out">⧉</button>
+    </div>
+    <div class="section-body">
+      <div class="glitch-grid" style="margin-top:2px">
+        <button id="btn-shake"       class="btn-glitch btn-shake">📳 SHAKE</button>
+        <button id="btn-zoom-punch"  class="btn-glitch btn-zoom">🔍 ZOOM PUNCH</button>
+        <button id="btn-color-crush" class="btn-glitch btn-crush">🎨 COLOR CRUSH</button>
+        <button id="btn-tunnel"      class="btn-glitch btn-tunnel">💫 BLUR PULSE</button>
+      </div>
+      <div class="row" style="gap:6px;margin-top:6px">
+        <button id="btn-strobe"       class="btn-strobe btn-strobe-white" style="flex:1">⚡ White Strobe</button>
+        <button id="btn-strobe-black" class="btn-strobe btn-strobe-black-btn" style="flex:1">⬛ Black Strobe</button>
+      </div>
+      <div class="row" style="margin-top:4px">
+        <span style="font-size:10px;color:var(--text-faint);text-align:center;width:100%"><kbd>Space</kbd> White &nbsp;·&nbsp; <kbd>X</kbd> Black &nbsp;·&nbsp; <kbd>B</kbd> Blackout &nbsp;·&nbsp; <kbd>1</kbd> Shake &nbsp;·&nbsp; <kbd>2</kbd> Zoom &nbsp;·&nbsp; <kbd>3</kbd> Crush &nbsp;·&nbsp; <kbd>4</kbd> Blur</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Parameters + Preset Code (combined, collapsible) -->
+  <section class="section collapsible-section" id="sec-params">
+    <div class="section-title section-toggle" data-sec="params">
+      <span class="chevron">▾</span> Parameters
+      <button class="btn-popout" data-sec="params" title="Pop out">⧉</button>
+    </div>
+    <div class="section-body">
+      <div class="row" style="margin-bottom:8px">
+        <button id="btn-randomize-params" class="btn btn-editor-action" style="flex:1">🔀 Randomize Params</button>
+      </div>
+      <div id="param-groups"></div>
+
+      <!-- Preset Code (merged in) -->
+      <div style="border-top:1px solid #2a2a2e;margin:10px 0 8px"></div>
+      <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Preset Code</div>
+      <div id="code-view">
+        <div style="font-size:10px;color:var(--text-muted);margin-bottom:3px">Per-Frame Equations</div>
+        <textarea id="code-frame-eqs" class="code-editor" spellcheck="false" placeholder="// No per-frame equations"></textarea>
+        <div style="font-size:10px;color:var(--text-muted);margin:6px 0 3px">Per-Pixel Equations</div>
+        <textarea id="code-pixel-eqs" class="code-editor" spellcheck="false" placeholder="// No per-pixel equations"></textarea>
+        <div style="font-size:10px;color:var(--text-muted);margin:6px 0 3px">Init Equations <span style="opacity:0.5">(read-only, runs once on load)</span></div>
+        <textarea id="code-init-eqs" class="code-editor code-editor-readonly" spellcheck="false" readonly></textarea>
+        <div class="row" style="margin-top:6px;gap:6px">
+          <button id="btn-apply-code" class="btn btn-apply" style="flex:1">Apply Code</button>
+          <button id="btn-reset-code" class="btn" style="font-size:11px">Reset</button>
+        </div>
+        <div class="row" style="margin-top:8px;gap:6px">
+          <input type="text" id="save-preset-name" placeholder="Save as…" style="flex:1;font-size:12px">
+          <button id="btn-save-preset" class="btn btn-save">Save Preset</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Scrolling Text -->
+  <section class="section collapsible-section" id="sec-scrolltext">
+    <div class="section-title section-toggle" data-sec="scrolltext">
+      <span class="chevron">▾</span> 📜 Scrolling Text / Photo Submission
+      <button class="btn-popout" data-sec="scrolltext" title="Pop out">⧉</button>
+    </div>
+    <div class="section-body">
+
+      <div class="venue-sub">
+
+        <!-- ── Audience Messages (inline) ── -->
+        <div style="border-top:1px solid #2a2a2e;margin:10px 0"></div>
+        <div style="font-size:10px;color:#777;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">Audience Messages</div>
+
+        <!-- Submission link -->
+        <div class="venue-sub">
+          <div class="venue-subheader">Submission Link</div>
+          <div style="font-size:11px;color:#888;margin-bottom:8px;line-height:1.5">Share this QR or link so your audience can submit messages to scroll on screen.</div>
+          <div id="audience-url" style="font-family:monospace;font-size:11px;font-weight:600;color:#3a7bd5;background:#1c1c1e;border-radius:8px;padding:8px 10px;word-break:break-all;margin-bottom:4px;cursor:pointer" title="Click to open · also copies to clipboard">Loading…</div>
+          <span id="audience-copy-tip" style="font-size:10px;color:#34c759;opacity:0;transition:opacity .3s;display:block;margin-bottom:8px">Opened in browser · link copied!</span>
+          <img id="audience-qr" src="" alt="QR" style="display:block;border-radius:8px;margin:0 auto 10px;border:2px solid #2c2c2e" width="140" height="140">
+          <div style="display:flex;gap:6px;margin-bottom:6px">
+            <button id="btn-audience-qr-overlay" class="btn-venue-sec" style="flex:1">📺 Show QR on Screen</button>
+            <button id="btn-audience-open-log"   class="btn-venue-sec" style="flex:1">📋 Open Submission History</button>
+          </div>
+          <div style="display:flex;gap:6px;margin-bottom:6px">
+            <button id="btn-download-qr" class="btn-venue-sec" style="flex:1">⬇ Download QR Code</button>
+          </div>
+          <div id="qr-interval-controls" style="display:none;background:#1c1c1e;border-radius:8px;padding:8px 10px;margin-bottom:8px;font-size:11px">
+            <div style="color:#888;margin-bottom:6px">QR Display Schedule</div>
+            <div style="display:grid;grid-template-columns:auto 1fr;align-items:center;gap:4px 8px">
+              <label style="color:#aaa">Show for</label>
+              <select id="qr-show-sec" style="font-size:11px;background:#2c2c2e;border:1px solid #3a3a3c;border-radius:5px;color:#fff;padding:3px 6px">
+                <option value="10">10 sec</option>
+                <option value="15" selected>15 sec</option>
+                <option value="20">20 sec</option>
+                <option value="30">30 sec</option>
+                <option value="60">60 sec</option>
+              </select>
+              <label style="color:#aaa">Every</label>
+              <select id="qr-interval-min" style="font-size:11px;background:#2c2c2e;border:1px solid #3a3a3c;border-radius:5px;color:#fff;padding:3px 6px">
+                <option value="2">2 min</option>
+                <option value="5" selected>5 min</option>
+                <option value="10">10 min</option>
+                <option value="15">15 min</option>
+                <option value="30">30 min</option>
+              </select>
+              <label style="color:#aaa">Position</label>
+              <select id="qr-position" style="font-size:11px;background:#2c2c2e;border:1px solid #3a3a3c;border-radius:5px;color:#fff;padding:3px 6px">
+                <option value="center" selected>Center</option>
+                <option value="top-left">Top Left</option>
+                <option value="top-right">Top Right</option>
+                <option value="bottom-left">Bottom Left</option>
+                <option value="bottom-right">Bottom Right</option>
+              </select>
+            </div>
+            <div style="margin-top:8px">
+              <div class="row" style="align-items:center;gap:6px;margin-bottom:4px">
+                <span style="font-size:11px;color:#aaa;width:28px">X</span>
+                <input type="range" id="qr-pos-x" min="0" max="100" value="50" style="flex:1">
+                <span id="qr-pos-x-val" style="font-size:11px;color:#aaa;width:30px;text-align:right">50%</span>
+              </div>
+              <div class="row" style="align-items:center;gap:6px;margin-bottom:4px">
+                <span style="font-size:11px;color:#aaa;width:28px">Y</span>
+                <input type="range" id="qr-pos-y" min="0" max="100" value="50" style="flex:1">
+                <span id="qr-pos-y-val" style="font-size:11px;color:#aaa;width:30px;text-align:right">50%</span>
+              </div>
+              <div class="row" style="align-items:center;gap:6px">
+                <span style="font-size:11px;color:#aaa;width:28px">Sz</span>
+                <input type="range" id="qr-scale" min="0.3" max="3" step="0.1" value="1.0" style="flex:1">
+                <span id="qr-scale-val" style="font-size:11px;color:#aaa;width:30px;text-align:right">1.0×</span>
+              </div>
+            </div>
+          </div>
+          <div class="row" style="gap:6px;margin-bottom:8px;align-items:center;font-size:11px">
+            <label style="flex:0 0 auto;color:#888">Discard messages after</label>
+            <select id="audience-replay-window" style="flex:1;font-size:11px;background:#1c1c1e;border:1px solid #3a3a3c;border-radius:6px;color:#fff;padding:4px 6px">
+              <option value="0">Every restart</option>
+              <option value="1">1 hour</option>
+              <option value="4">4 hours</option>
+              <option value="8" selected>8 hours</option>
+              <option value="24">24 hours</option>
+              <option value="9999">Never (always resume)</option>
+            </select>
+            <button id="btn-audience-clear-cursor" class="btn-small" title="Discard all messages and reset now">Reset now</button>
+          </div>
+        </div>
+
+        <!-- Moderation -->
+        <div class="venue-sub">
+          <div class="venue-subheader">Moderation</div>
+          <select id="audience-mode" style="width:100%;font-size:11px;background:#1c1c1e;border:1px solid #3a3a3c;border-radius:6px;color:#fff;padding:6px 8px">
+            <option value="moderated" selected>Moderated — approve before scrolling</option>
+            <option value="unmoderated">Unmoderated — scroll immediately</option>
+          </select>
+        </div>
+
+        <!-- Pending queue -->
+        <div class="venue-sub" id="audience-queue-wrap">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+            <span class="venue-subheader" style="margin-bottom:0">Pending (<span id="audience-count">0</span>)</span>
+            <button id="btn-audience-clear" class="btn-small" style="font-size:10px">Clear All</button>
+          </div>
+          <div id="audience-queue" style="display:flex;flex-direction:column;gap:5px;max-height:220px;overflow-y:auto"></div>
+          <div id="audience-empty" style="font-size:11px;color:#555;text-align:center;padding:8px 0">No pending messages</div>
+        </div>
+
+        <!-- ── Photo Sharing ── -->
+        <div style="border-top:1px solid #2a2a2e;margin:10px 0"></div>
+        <div style="font-size:10px;color:#777;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px">📸 Photo Sharing</div>
+
+        <div class="venue-sub">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+            <div>
+              <div style="font-size:12px;font-weight:600;color:#f5f5f7;margin-bottom:2px">Moderation</div>
+              <div style="font-size:11px;color:#888" id="photo-mode-label">Photos require approval before display</div>
+            </div>
+            <label class="toggle" style="flex-shrink:0">
+              <input type="checkbox" id="photo-moderated-toggle" checked>
+              <span class="sl"></span>
+            </label>
+          </div>
+          <div style="display:flex;gap:6px;align-items:center;font-size:11px;margin-bottom:8px">
+            <label style="color:#888;flex:0 0 auto">Display for</label>
+            <select id="photo-display-duration" style="flex:1;font-size:11px;background:#1c1c1e;border:1px solid #3a3a3c;border-radius:6px;color:#fff;padding:4px 6px">
+              <option value="8">8 seconds</option>
+              <option value="12" selected>12 seconds</option>
+              <option value="18">18 seconds</option>
+              <option value="25">25 seconds</option>
+              <option value="40">40 seconds</option>
+            </select>
+          </div>
+          <div style="display:flex;gap:5px">
+            <button id="btn-photo-open-history" class="btn-small" style="flex:1">📂 View History</button>
+            <button id="btn-photo-clear-history" class="btn-small btn-venue-stop" style="flex:1">🗑 Clear History</button>
+          </div>
+        </div>
+
+        <!-- Photo kill switch -->
+        <button id="btn-photo-kill" class="btn-venue-stop" style="width:100%;font-size:13px;font-weight:700;padding:10px;margin-bottom:8px;display:none">
+          ⏭ Skip Photo
+        </button>
+
+        <!-- Photo pending queue -->
+        <div class="venue-sub" id="photo-queue-wrap">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+            <span class="venue-subheader" style="margin-bottom:0">Pending Photos (<span id="photo-count">0</span>)</span>
+          </div>
+          <div id="photo-queue" style="display:flex;flex-direction:column;gap:8px;max-height:400px;overflow-y:auto"></div>
+          <div id="photo-empty" style="font-size:11px;color:#555;text-align:center;padding:8px 0">No pending photos — audience can submit via the 📸 tab on the submission page</div>
+        </div>
+
+        <!-- ── Divider ── -->
+        <div style="border-top:1px solid #2a2a2e;margin:10px 0"></div>
+
+        <!-- ── Custom Messages ── -->
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+          <div style="font-size:10px;color:#777;text-transform:uppercase;letter-spacing:.05em">Custom Messages</div>
+          <label class="toggle-label" style="font-size:11px;font-weight:normal">
+            <input type="checkbox" id="custom-msgs-enabled" checked> Enabled
+          </label>
+        </div>
+        <div style="display:flex;gap:5px;margin-bottom:6px">
+          <input type="text" id="custom-msg-input" placeholder="Type a message and press Add…"
+            style="flex:1;font-size:12px;padding:5px 7px;background:#1c1c1e;color:#f5f5f7;border:1px solid #333;border-radius:6px;font-family:inherit">
+          <button id="btn-add-custom-msg" class="btn-venue-sec" style="white-space:nowrap">+ Add</button>
+        </div>
+        <div id="custom-msg-list" style="display:flex;flex-direction:column;gap:4px"></div>
+
+        <!-- ── Divider ── -->
+        <div style="border-top:1px solid #2a2a2e;margin:10px 0"></div>
+
+        <!-- ── Rotation controls ── -->
+        <div class="row" style="gap:5px;margin-bottom:8px">
+          <button id="btn-feeds-start" class="btn-venue-go"   style="flex:1">▶ Start Scrolling Text</button>
+          <button id="btn-feeds-stop"  class="btn-venue-stop" style="flex:1">■ Stop</button>
+        </div>
+        <div class="row" style="gap:6px;margin-bottom:10px;align-items:center;font-size:11px">
+          <label style="flex:0 0 auto">Show every</label>
+          <select id="feed-interval" style="flex:1;font-size:11px">
+            <option value="0" selected>Continuous</option>
+            <option value="0.25">15 sec</option>
+            <option value="0.5">30 sec</option>
+            <option value="1">1 min</option>
+            <option value="2">2 min</option>
+            <option value="5">5 min</option>
+            <option value="10">10 min</option>
+            <option value="15">15 min</option>
+            <option value="30">30 min</option>
+          </select>
+        </div>
+
+        <!-- ── Live Feeds ── -->
+        <div style="font-size:10px;color:#777;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Live Feeds</div>
+        <div id="feed-list" style="display:flex;flex-direction:column;gap:5px">
+
+          <div class="feed-row">
+            <label class="toggle-label" style="flex:1"><input type="checkbox" class="feed-toggle" data-feed="audience" id="feed-audience-toggle" checked> 📨 Audience Submissions</label>
+          </div>
+
+          <div class="feed-row">
+            <label class="toggle-label" style="flex:1"><input type="checkbox" class="feed-toggle" data-feed="dadjokes" checked> 😂 Dad Jokes</label>
+            <button class="feed-now-btn btn-venue-sec" data-feed="dadjokes">→</button>
+          </div>
+
+          <div class="feed-row">
+            <label class="toggle-label" style="flex:1"><input type="checkbox" class="feed-toggle" data-feed="advice" checked> 💭 Random Advice</label>
+            <button class="feed-now-btn btn-venue-sec" data-feed="advice">→</button>
+          </div>
+
+          <div class="feed-row">
+            <label class="toggle-label" style="flex:1"><input type="checkbox" class="feed-toggle" data-feed="ronswanson" checked> 🥩 Ron Swanson</label>
+            <button class="feed-now-btn btn-venue-sec" data-feed="ronswanson">→</button>
+          </div>
+
+          <div class="feed-row">
+            <label class="toggle-label" style="flex:1"><input type="checkbox" class="feed-toggle" data-feed="kanye" checked> 🎤 Kanye Quotes</label>
+            <button class="feed-now-btn btn-venue-sec" data-feed="kanye">→</button>
+          </div>
+
+          <div class="feed-row">
+            <label class="toggle-label" style="flex:1"><input type="checkbox" class="feed-toggle" data-feed="wikipedia" checked> 📚 On This Day</label>
+            <button class="feed-now-btn btn-venue-sec" data-feed="wikipedia">→</button>
+          </div>
+
+          <div class="feed-row">
+            <label class="toggle-label" style="flex:1"><input type="checkbox" class="feed-toggle" data-feed="trivia" checked> 🧠 Trivia</label>
+            <button class="feed-now-btn btn-venue-sec" data-feed="trivia">→</button>
+          </div>
+
+          <div class="feed-row">
+            <label class="toggle-label" style="flex:1"><input type="checkbox" class="feed-toggle" data-feed="uselessfacts" checked> 🪲 Useless Facts</label>
+            <button class="feed-now-btn btn-venue-sec" data-feed="uselessfacts">→</button>
+          </div>
+
+          <div class="feed-row">
+            <label class="toggle-label" style="flex:1"><input type="checkbox" class="feed-toggle" data-feed="catfacts" checked> 🐱 Cat Facts</label>
+            <button class="feed-now-btn btn-venue-sec" data-feed="catfacts">→</button>
+          </div>
+
+          <div class="feed-row">
+            <label class="toggle-label" style="flex:1"><input type="checkbox" class="feed-toggle" data-feed="evilinsults" checked> 😈 Evil Insults</label>
+            <button class="feed-now-btn btn-venue-sec" data-feed="evilinsults">→</button>
+          </div>
+
+          <div class="feed-row">
+            <label class="toggle-label" style="flex:1"><input type="checkbox" class="feed-toggle" data-feed="showerthoughts" checked> 🚿 Shower Thoughts</label>
+            <button class="feed-now-btn btn-venue-sec" data-feed="showerthoughts">→</button>
+          </div>
+
+          <div class="feed-row">
+            <label class="toggle-label" style="flex:1"><input type="checkbox" class="feed-toggle" data-feed="corporatebs" checked> 💼 Corporate BS</label>
+            <button class="feed-now-btn btn-venue-sec" data-feed="corporatebs">→</button>
+          </div>
+
+          <div class="feed-row">
+            <label class="toggle-label" style="flex:1"><input type="checkbox" class="feed-toggle" data-feed="dirtyjokes" checked> 🔞 Dirty Jokes</label>
+            <button class="feed-now-btn btn-venue-sec" data-feed="dirtyjokes">→</button>
+          </div>
+
+          <div>
+            <div class="feed-row">
+              <label class="toggle-label" style="flex:1"><input type="checkbox" class="feed-toggle" data-feed="chuck" checked> 🥊 Chuck Norris Facts</label>
+              <button class="feed-now-btn btn-venue-sec" data-feed="chuck">→</button>
+            </div>
+            <div style="display:flex;align-items:center;gap:5px;margin-top:3px;margin-left:20px">
+              <span style="font-size:10px;color:#888;white-space:nowrap">Replace name:</span>
+              <input type="text" id="feed-chuck-name" value="Chuck Norris"
+                style="flex:1;font-size:10px;padding:2px 5px;background:#1c1c1e;color:#f5f5f7;border:1px solid #333;border-radius:4px">
+            </div>
+          </div>
+
+          <div>
+            <div class="feed-row">
+              <label class="toggle-label" style="flex:1"><input type="checkbox" class="feed-toggle" data-feed="closetime"> 🕐 Hours Until Close</label>
+              <button class="feed-now-btn btn-venue-sec" data-feed="closetime">→</button>
+            </div>
+            <div style="display:flex;align-items:center;gap:5px;margin-top:3px;margin-left:20px">
+              <span style="font-size:10px;color:#888;white-space:nowrap">Close time:</span>
+              <input type="time" id="feed-close-time" value="02:00"
+                style="font-size:10px;padding:2px 5px;background:#1c1c1e;color:#f5f5f7;border:1px solid #333;border-radius:4px">
+            </div>
+          </div>
+
+        </div>
+
+        <div id="feed-status" style="font-size:10px;color:#777;margin-top:8px;min-height:14px;word-break:break-word"></div>
+
+        <!-- ── Divider ── -->
+        <div style="border-top:1px solid #2a2a2e;margin:10px 0"></div>
+
+        <!-- ── Style ── -->
+        <div style="font-size:10px;color:#777;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Style</div>
+        <div class="venue-grid">
+          <label>Speed</label>
+          <input type="range" id="marquee-speed" min="1" max="12" value="3" step="0.5">
+          <span id="marquee-speed-val">3</span>
+
+          <label>Font</label>
+          <input type="range" id="marquee-size" min="24" max="120" value="52" step="2">
+          <span id="marquee-size-val">52px</span>
+
+          <label>Color</label>
+          <input type="color" id="marquee-color" value="#ffffff" style="height:26px;border:none;background:none;cursor:pointer">
+          <span></span>
+
+          <label>Strip</label>
+          <input type="range" id="marquee-bg-alpha" min="0" max="1" step="0.05" value="0.65">
+          <span id="marquee-bg-alpha-val">65%</span>
+
+          <label>Position</label>
+          <select id="marquee-position" style="grid-column:span 2">
+            <option value="bottom">Bottom</option>
+            <option value="top">Top</option>
+            <option value="center">Center</option>
+          </select>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- Logo / Image Overlays -->
+  <section class="section collapsible-section" id="sec-logooverlay">
+    <div class="section-title section-toggle" data-sec="logooverlay">
+      <span class="chevron">▾</span> 🖼️ Logo / Image Overlays
+    </div>
+    <div class="section-body">
+
+      <!-- Logos -->
+      <div class="venue-sub">
+        <div style="display:flex;align-items:center;justify-content:flex-end;margin-bottom:6px">
+          <label class="toggle-label" style="font-size:11px;font-weight:normal">
+            <input type="checkbox" id="logos-enabled" checked> Graphics On
+          </label>
+        </div>
+        <!-- Global sequence settings -->
+        <div style="display:grid;grid-template-columns:auto 1fr auto 1fr;align-items:center;gap:4px 8px;margin-bottom:8px;font-size:11px">
+          <label>Show each for</label>
+          <select id="logo-global-duration" style="font-size:11px">
+            <option value="5">5s</option>
+            <option value="10" selected>10s</option>
+            <option value="15">15s</option>
+            <option value="20">20s</option>
+            <option value="30">30s</option>
+            <option value="60">60s</option>
+          </select>
+          <label>then wait</label>
+          <select id="logo-global-interval" style="font-size:11px">
+            <option value="0.083">5 sec</option>
+            <option value="0.25">15 sec</option>
+            <option value="0.5">30 sec</option>
+            <option value="1">1 min</option>
+            <option value="2">2 min</option>
+            <option value="5" selected>5 min</option>
+            <option value="10">10 min</option>
+            <option value="15">15 min</option>
+            <option value="30">30 min</option>
+            <option value="60">60 min</option>
+          </select>
+        </div>
+        <button id="btn-add-logo" class="btn-venue-sec" style="width:100%;margin-bottom:8px">+ Add Image…</button>
+        <div id="logo-list"></div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- Bar Trivia -->
+  <section class="section collapsible-section" id="sec-trivia">
+    <div class="section-title section-toggle" data-sec="trivia">
+      <span class="chevron">▾</span> 🧠 Bar Trivia
+      <button class="btn-popout" data-sec="trivia" title="Pop out">⧉</button>
+    </div>
+    <div class="section-body">
+      <div style="font-size:11px;color:#6e6e73;margin-bottom:10px;line-height:1.5">
+        Guests answer on their phones via the audience QR code. Questions are fetched live — no prep needed.
+      </div>
+
+      <!-- Settings -->
+      <div style="display:grid;grid-template-columns:auto 1fr;gap:5px 10px;align-items:center;font-size:11px;margin-bottom:10px">
+        <label style="color:#aaa">Category</label>
+        <select id="trivia-category-sel" style="font-size:11px;background:#1c1c1e;border:1px solid #3a3a3c;border-radius:6px;color:#fff;padding:4px 6px">
+          <option value="">Any Category</option>
+          <option value="9">General Knowledge</option>
+          <option value="17">Science &amp; Nature</option>
+          <option value="23">History</option>
+          <option value="22">Geography</option>
+          <option value="21">Sports</option>
+          <option value="11">Film</option>
+          <option value="12">Music</option>
+          <option value="14">Television</option>
+          <option value="15">Video Games</option>
+          <option value="18">Computers</option>
+        </select>
+        <label style="color:#aaa">Difficulty</label>
+        <select id="trivia-difficulty-sel" style="font-size:11px;background:#1c1c1e;border:1px solid #3a3a3c;border-radius:6px;color:#fff;padding:4px 6px">
+          <option value="">Any</option>
+          <option value="easy">Easy</option>
+          <option value="medium">Medium</option>
+          <option value="hard">Hard</option>
+        </select>
+        <label style="color:#aaa">Timer</label>
+        <select id="trivia-timer-sel" style="font-size:11px;background:#1c1c1e;border:1px solid #3a3a3c;border-radius:6px;color:#fff;padding:4px 6px">
+          <option value="20">20 sec</option>
+          <option value="30" selected>30 sec</option>
+          <option value="45">45 sec</option>
+          <option value="60">60 sec</option>
+          <option value="120">2 min</option>
+          <option value="180">3 min</option>
+          <option value="240">4 min</option>
+          <option value="300">5 min</option>
+        </select>
+      </div>
+
+      <!-- Action buttons -->
+      <div style="display:flex;gap:6px;margin-bottom:6px">
+        <button id="btn-trivia-start"  class="btn-venue-go"   style="flex:1">▶ New Question</button>
+        <button id="btn-trivia-reveal" class="btn-venue-sec"  style="flex:1" disabled>✓ Reveal Answer</button>
+      </div>
+      <div style="display:flex;gap:6px;margin-bottom:10px">
+        <button id="btn-trivia-scores" class="btn-venue-sec"  style="flex:1" disabled>🏆 Show Scores</button>
+        <button id="btn-trivia-hide"   class="btn-venue-stop" style="flex:1">■ Clear Screen</button>
+      </div>
+      <div class="row" style="margin-top:6px;gap:6px">
+        <button id="btn-trivia-clear-scores" class="btn" style="flex:1;background:#3a1010;color:#ff453a;border-color:#ff453a">🗑️ Clear All Scores</button>
+        <button id="btn-trivia-open-log" class="btn" style="flex:1;font-size:11px">📋 Score Log</button>
+      </div>
+      <div style="font-size:10px;color:#555;text-align:center;margin-top:4px">Clearing scores cannot be undone — current scores are saved to the log first</div>
+
+      <!-- Current question (shown after fetch) -->
+      <div id="trivia-current-wrap" style="display:none;background:#1c1c1e;border-radius:10px;padding:14px 16px;margin-bottom:10px">
+        <div id="trivia-ctrl-question" style="color:#fff;font-weight:600;font-size:15px;line-height:1.5;margin-bottom:10px"></div>
+        <div id="trivia-ctrl-options"  style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px"></div>
+        <div style="font-size:13px;color:#888">Answer: <span id="trivia-ctrl-answer" style="color:#34c759;font-weight:600"></span></div>
+      </div>
+
+      <!-- Response counter -->
+      <div id="trivia-responses-wrap" style="display:none;font-size:11px;color:#888;margin-bottom:10px">
+        Responses received: <span id="trivia-response-count" style="color:#fff;font-weight:700">0</span>
+      </div>
+
+      <!-- Participants -->
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <span style="font-size:10px;color:#777;text-transform:uppercase;letter-spacing:.05em">Teams Registered</span>
+        <button id="btn-trivia-reset-teams" class="btn-small" style="font-size:10px">Clear Teams</button>
+      </div>
+      <div id="trivia-participants-ctrl" style="display:flex;flex-direction:column;gap:3px;max-height:120px;overflow-y:auto;margin-bottom:10px">
+        <div style="font-size:11px;color:#555;text-align:center;padding:6px">No teams registered yet</div>
+      </div>
+
+      <!-- Divider -->
+      <div style="border-top:1px solid #2a2a2e;margin:8px 0 10px"></div>
+
+      <!-- Custom Questions -->
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <span style="font-size:10px;color:#777;text-transform:uppercase;letter-spacing:.05em">✏️ Custom Questions</span>
+      </div>
+      <div id="custom-trivia-list-ctrl" style="display:flex;flex-direction:column;gap:5px;margin-bottom:10px">
+        <div style="font-size:11px;color:#555;text-align:center;padding:6px">No custom questions yet</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:5px">
+        <input id="cq-question-ctrl" type="text" placeholder="Question" style="width:100%">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px">
+          <input id="cq-a-ctrl" type="text" placeholder="Answer A">
+          <input id="cq-b-ctrl" type="text" placeholder="Answer B">
+          <input id="cq-c-ctrl" type="text" placeholder="Answer C">
+          <input id="cq-d-ctrl" type="text" placeholder="Answer D">
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:12px;color:var(--text-muted)">Correct:</span>
+          <select id="cq-correct-ctrl">
+            <option value="0">A</option><option value="1">B</option><option value="2">C</option><option value="3">D</option>
+          </select>
+          <button id="btn-cq-add" class="btn" style="flex:1">+ Add</button>
+        </div>
+      </div>
+
+      <!-- Divider -->
+      <div style="border-top:1px solid #2a2a2e;margin:12px 0 10px"></div>
+
+      <!-- Scoreboard -->
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <span style="font-size:10px;color:#777;text-transform:uppercase;letter-spacing:.05em">Scoreboard</span>
+        <button id="btn-trivia-reset" class="btn-small" style="font-size:10px">Reset Scores</button>
+      </div>
+      <div id="trivia-scoreboard-ctrl" style="display:flex;flex-direction:column;gap:3px;max-height:200px;overflow-y:auto">
+        <div style="font-size:11px;color:#555;text-align:center;padding:6px">No scores yet</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Auto-Cycle -->
+  <section class="section collapsible-section" id="sec-cycle">
+    <div class="section-title section-toggle" data-sec="cycle">
+      <span class="chevron">▾</span> Auto-Cycle
+    </div>
+    <div class="section-body">
+      <!-- Blend time — applies to all preset changes, not just auto-cycle -->
+      <div class="row">
+        <span style="font-size:12px;color:var(--text-muted);flex-shrink:0">Blend</span>
+        <input type="number" id="blend-time" min="0" max="30" step="0.5" value="2" class="num-input">
+        <span style="font-size:12px;color:var(--text-muted)">sec &nbsp;—&nbsp; applies to all preset changes</span>
+      </div>
+      <!-- Timer mode -->
+      <div class="row" style="margin-top:8px">
+        <label class="toggle-label">
+          <input type="checkbox" id="cycle-enabled">
+          Timer
+        </label>
+        <label class="inline-label">Every
+          <input type="number" id="cycle-interval" min="1" max="3600" value="15" class="num-input"> sec
+        </label>
+      </div>
+      <!-- Beat sync mode -->
+      <div class="row" style="margin-top:8px">
+        <label class="toggle-label">
+          <input type="checkbox" id="beat-sync-enabled">
+          Beat Sync
+        </label>
+        <label class="inline-label">Every
+          <select id="beat-divisor" class="select">
+            <option value="1">1 beat</option>
+            <option value="2">2 beats</option>
+            <option value="4" selected>4 beats</option>
+            <option value="8">8 beats</option>
+            <option value="16">16 beats</option>
+            <option value="32">32 beats</option>
+          </select>
+        </label>
+        <span id="bpm-display" class="bpm-display">— BPM</span>
+        <button id="btn-reset-bpm" class="btn-sm" style="margin-left:6px;font-size:10px;padding:2px 6px">Reset</button>
+      </div>
+      <!-- Imported preset weighting (hidden — managed internally) -->
+      <input type="checkbox" id="imported-enabled" checked style="display:none">
+      <select id="imported-chance" class="select" style="display:none"><option value="0.20" selected>20%</option></select>
+      <!-- Mix in generated -->
+      <div class="row" style="margin-top:8px">
+        <label class="toggle-label">
+          <input type="checkbox" id="mix-generated">
+          Mix in Generated
+        </label>
+        <label class="inline-label" style="margin-left:8px">Chance
+          <select id="mix-generated-chance" class="select" style="margin-left:6px">
+            <option value="0.10">10%</option>
+            <option value="0.20" selected>20%</option>
+            <option value="0.33">33%</option>
+            <option value="0.50">50%</option>
+            <option value="1.00">100%</option>
+          </select>
+        </label>
+      </div>
+      <!-- Favorites weighting (hidden — managed internally) -->
+      <input type="checkbox" id="fav-cycle-enabled" style="display:none">
+      <select id="fav-cycle-chance" class="select" style="display:none"><option value="0.20" selected>20%</option></select>
+    </div>
+  </section>
+
+  <!-- Audio -->
+  <section class="section collapsible-section" id="sec-audio">
+    <div class="section-title section-toggle" data-sec="audio">
+      <span class="chevron">▾</span> Audio Source
+      <span id="audio-source-warn" style="font-size:10px;color:#ff9500;margin-left:8px;font-weight:normal;display:none">⚠ Not connected</span>
+    </div>
+    <div class="section-body">
+      <div class="row">
+        <select id="audio-device" class="select-full"></select>
+        <button id="btn-start-audio" class="btn">Connect</button>
+      </div>
+      <!-- System audio permission notice — shown only when System Audio is selected -->
+      <div id="system-audio-notice" style="display:none; margin-top:8px; padding:8px 10px; background:#7c3a00; border:1px solid #c05a00; border-radius:6px; font-size:11px; line-height:1.5; color:#ffd8a8;">
+        <strong style="display:block; margin-bottom:3px;">⚠ Screen Recording permission required</strong>
+        macOS will show a permission dialog when you click Connect. You must click <strong>Allow</strong> to enable system audio capture. You may also need to grant access in <strong>System Settings → Privacy &amp; Security → Screen &amp; System Audio Recording</strong> and restart the app.
+      </div>
+    </div>
+  </section>
+
+  <!-- Genre -->
+  <section class="section collapsible-section" id="sec-genre">
+    <div class="section-title section-toggle" data-sec="genre">
+      <span class="chevron">▾</span> 🎵 Genre
+    </div>
+    <div class="section-body">
+      <div class="row genre-row">
+        <button class="btn-genre active" data-genre="flat">Flat</button>
+        <button class="btn-genre" data-genre="edm">EDM</button>
+        <button class="btn-genre" data-genre="classical">Classical</button>
+        <button class="btn-genre" data-genre="rock">Rock</button>
+        <button class="btn-genre" data-genre="jazz">Jazz</button>
+      </div>
+      <div class="eq-row" style="margin-top:10px">
+        <div class="eq-band">
+          <div class="vu-wrap" style="width:100%"><div class="vu-bar vu-bass" id="vu-bass"></div></div>
+          <input type="range" id="eq-bass" class="eq-slider" min="-15" max="15" step="1" value="0">
+          <div style="display:flex;justify-content:space-between;width:100%">
+            <span class="eq-label">Bass</span><span class="eq-val" id="eq-bass-val">0</span>
+          </div>
+        </div>
+        <div class="eq-band">
+          <div class="vu-wrap" style="width:100%"><div class="vu-bar vu-mid" id="vu-mid"></div></div>
+          <input type="range" id="eq-mid" class="eq-slider" min="-15" max="15" step="1" value="0">
+          <div style="display:flex;justify-content:space-between;width:100%">
+            <span class="eq-label">Mid</span><span class="eq-val" id="eq-mid-val">0</span>
+          </div>
+        </div>
+        <div class="eq-band">
+          <div class="vu-wrap" style="width:100%"><div class="vu-bar vu-treb" id="vu-treb"></div></div>
+          <input type="range" id="eq-treb" class="eq-slider" min="-15" max="15" step="1" value="0">
+          <div style="display:flex;justify-content:space-between;width:100%">
+            <span class="eq-label">Treble</span><span class="eq-val" id="eq-treb-val">0</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Output Window -->
+  <section class="section collapsible-section" id="sec-output">
+    <div class="section-title section-toggle" data-sec="output">
+      <span class="chevron">▾</span> Output Window
+    </div>
+    <div class="section-body">
+      <div class="row">
+        <label class="toggle-label">
+          <input type="checkbox" id="viz-visible" checked>
+          Show output window
+        </label>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <select id="display-select" class="select" style="flex:1"></select>
+        <button id="btn-send-display" class="btn">Send Fullscreen</button>
+        <button id="btn-exit-fullscreen" class="btn">Exit</button>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <select id="res-preset" class="select">
+          <option value="1280x720">1280 × 720</option>
+          <option value="1920x1080">1920 × 1080</option>
+          <option value="2560x1440">2560 × 1440</option>
+          <option value="custom">Custom…</option>
+        </select>
+        <button id="btn-apply-res" class="btn">Apply Size</button>
+      </div>
+      <div id="custom-res-row" class="row hidden">
+        <input type="number" id="custom-w" placeholder="width" value="1280" class="num-input-wide">
+        <span>×</span>
+        <input type="number" id="custom-h" placeholder="height" value="720" class="num-input-wide">
+      </div>
+    </div>
+  </section>
+
+  <!-- Performance -->
+  <section class="section collapsible-section" id="sec-perf">
+    <div class="section-title section-toggle" data-sec="perf">
+      <span class="chevron">▾</span> Performance
+    </div>
+    <div class="section-body">
+      <div class="row">
+        <label class="inline-label" style="flex:1">FPS Cap
+          <select id="fps-cap" class="select" style="margin-left:8px">
+            <option value="60">60 fps</option>
+            <option value="30">30 fps</option>
+            <option value="15">15 fps</option>
+          </select>
+        </label>
+      </div>
+      <div class="row" style="margin-top:6px">
+        <label class="inline-label" style="flex:1">Mesh Quality
+          <select id="mesh-quality" class="select" style="margin-left:8px">
+            <option value="high">High (32 × 24)</option>
+            <option value="medium">Medium (16 × 12)</option>
+            <option value="low">Low (8 × 6)</option>
+            <option value="ultralow">Ultra-Low (4 × 3)</option>
+          </select>
+        </label>
+        <span id="quality-status" style="font-size:11px;color:#6e6e73;margin-left:8px"></span>
+      </div>
+
+      <!-- GPU Load meter -->
+      <div class="row" style="margin-top:10px;align-items:center;gap:6px">
+        <span style="font-size:12px;color:var(--text-muted);white-space:nowrap">GPU Load</span>
+        <div class="vu-wrap" style="flex:1;height:6px">
+          <div id="perf-bar" class="vu-bar" style="background:var(--accent-light)"></div>
+        </div>
+        <span id="perf-label" style="font-size:11px;color:var(--text-faint);white-space:nowrap;width:72px;text-align:right">— fps</span>
+      </div>
+
+      <!-- Auto-skip heavy presets -->
+      <div class="row" style="margin-top:8px">
+        <label class="toggle-label">
+          <input type="checkbox" id="perf-skip-check">
+          Auto-skip heavy presets
+        </label>
+      </div>
+      <div class="row" style="margin-top:6px">
+        <label class="inline-label" style="flex:1">Skip when load exceeds
+          <select id="perf-threshold" class="select" style="margin-left:8px">
+            <option value="120">120%</option>
+            <option value="150" selected>150%</option>
+            <option value="175">175%</option>
+            <option value="200">200%</option>
+          </select>
+        </label>
+      </div>
+      <div style="font-size:10px;color:var(--text-faint);margin-top:4px">
+        Skips after 4 consecutive seconds above threshold. 30 s cooldown between skips.
+      </div>
+      <div class="row" style="margin-top:10px">
+        <button id="open-low-fps-log" class="btn" style="font-size:11px;width:100%">Open Low-FPS Preset Log</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Syphon -->
+  <section class="section collapsible-section" id="sec-syphon">
+    <div class="section-title section-toggle" data-sec="syphon">
+      <span class="chevron">▾</span> Syphon Output
+    </div>
+    <div class="section-body">
+      <div class="row">
+        <label class="toggle-label">
+          <input type="checkbox" id="syphon-enabled">
+          Enable
+        </label>
+        <input type="text" id="syphon-name" value="AV Club VJ" placeholder="Server name" style="flex:1">
+      </div>
+      <div id="syphon-status" style="font-size:11px;color:#6e6e73;margin-top:4px">Not running</div>
+      <div class="row" style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.08)">
+        <label class="toggle-label">
+          <input type="checkbox" id="syphon-overlay-enabled">
+          Overlay Channel (Alpha)
+        </label>
+      </div>
+      <div id="syphon-overlay-status" style="font-size:11px;color:#6e6e73;margin-top:4px">
+        Off — broadcasts overlays with transparent background as "AV Club VJ Overlay"
+      </div>
+    </div>
+  </section>
+
+  <!-- NDI -->
+  <section class="section collapsible-section" id="sec-ndi">
+    <div class="section-title section-toggle" data-sec="ndi">
+      <span class="chevron">▾</span> NDI Output
+    </div>
+    <div class="section-body">
+      <div class="row">
+        <label class="toggle-label">
+          <input type="checkbox" id="ndi-enabled">
+          Enable
+        </label>
+        <input type="text" id="ndi-name" value="AV Club VJ" placeholder="Sender name" style="flex:1">
+      </div>
+      <div id="ndi-status" style="font-size:11px;color:#6e6e73;margin-top:4px">Not running</div>
+    </div>
+  </section>
+
+  <!-- Presets (navigation hidden — cycling only) -->
+  <section class="section presets-section collapsible-section" id="sec-presets" style="display:none">
+    <div class="section-title section-toggle" data-sec="presets">
+      <span class="chevron">▾</span> Presets
+      <span id="preset-count" class="count-badge"></span>
+    </div>
+    <div class="section-body">
+      <div class="row" style="display:none">
+        <input type="search" id="preset-search" placeholder="Search presets…" class="search-input">
+        <button id="btn-import" class="btn">Import…</button>
+      </div>
+      <div class="preset-tabs" style="display:none">
+        <button class="tab-btn active" data-tab="builtin">Built-in</button>
+        <button class="tab-btn" data-tab="custom">Custom</button>
+        <button class="tab-btn" data-tab="favorites">⭐ Faves</button>
+        <button class="tab-btn" data-tab="hydra">🌊 Hydra</button>
+      </div>
+      <ul id="preset-list" class="preset-list"></ul>
+
+      <!-- Hydra parameter sliders — shown only in Hydra tab -->
+      <div id="hydra-params" class="hydra-params hidden">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <span class="section-label">Parameters</span>
+          <button id="btn-hydra-randomize" class="btn-small">🎲 Randomize</button>
+        </div>
+        <div class="hydra-slider-row"><label>DENSITY</label><input type="range" id="hp1" min="0" max="1" step="0.01" value="0.5"><span id="hp1-val">0.50</span></div>
+        <div class="hydra-slider-row"><label>DISTORT</label><input type="range" id="hp2" min="0" max="1" step="0.01" value="0.5"><span id="hp2-val">0.50</span></div>
+        <div class="hydra-slider-row"><label>SPEED</label><input type="range" id="hp3" min="0" max="1" step="0.01" value="0.5"><span id="hp3-val">0.50</span></div>
+        <div class="hydra-slider-row"><label>TRAIL</label><input type="range" id="hp4" min="0" max="1" step="0.01" value="0.5"><span id="hp4-val">0.50</span></div>
+        <div class="hydra-slider-row"><label>COLOR</label><input type="range" id="hp5" min="0" max="1" step="0.01" value="0.5"><span id="hp5-val">0.50</span></div>
+        <div class="hydra-slider-row"><label>CHAOS</label><input type="range" id="hp6" min="0" max="1" step="0.01" value="0.5"><span id="hp6-val">0.50</span></div>
+        <div class="hydra-slider-row"><label>SYMM</label><input type="range" id="hp7" min="0" max="1" step="0.01" value="0.5"><span id="hp7-val">0.50</span></div>
+        <div class="hydra-slider-row"><label>DEPTH</label><input type="range" id="hp8" min="0" max="1" step="0.01" value="0.5"><span id="hp8-val">0.50</span></div>
+      </div>
+
+      <!-- Hydra Code Editor — shown only in Hydra tab -->
+      <div id="hydra-editor" class="hydra-editor hidden">
+        <div class="hydra-editor-toolbar">
+          <span class="section-label">Code Editor</span>
+          <div style="display:flex;gap:6px">
+            <button id="btn-hydra-run"     class="btn-small btn-run">▶ Run</button>
+            <button id="btn-hydra-save"    class="btn-small">💾 Save</button>
+            <button id="btn-hydra-save-as" class="btn-small">＋ Save As</button>
+            <button id="btn-hydra-reset"   class="btn-small">↩ Reset</button>
+          </div>
+        </div>
+        <textarea id="hydra-code" class="hydra-code" spellcheck="false" autocorrect="off" autocapitalize="off"></textarea>
+        <div id="hydra-editor-status" class="hydra-editor-status"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- MIDI -->
+  <section class="section collapsible-section" id="sec-midi">
+    <div class="section-title section-toggle" data-sec="midi">
+      <span class="chevron">▾</span> MIDI
+      <span id="midi-status" style="font-size:11px;color:#6e6e73;margin-left:8px;font-weight:normal">Not connected</span>
+    </div>
+    <div class="section-body">
+      <div class="row">
+        <span style="flex:1;color:var(--text-muted);font-size:12px">White Strobe</span>
+        <span id="midi-label-strobe" class="midi-label">—</span>
+        <button id="midi-learn-strobe" class="btn btn-midi-learn">Learn</button>
+        <button id="midi-clear-strobe" class="btn btn-midi-clear">✕</button>
+      </div>
+      <div class="row" style="margin-top:6px">
+        <span style="flex:1;color:var(--text-muted);font-size:12px">Black Strobe</span>
+        <span id="midi-label-black-strobe" class="midi-label">—</span>
+        <button id="midi-learn-black-strobe" class="btn btn-midi-learn">Learn</button>
+        <button id="midi-clear-black-strobe" class="btn btn-midi-clear">✕</button>
+      </div>
+      <div class="row" style="margin-top:6px">
+        <span style="flex:1;color:var(--text-muted);font-size:12px">Blackout</span>
+        <span id="midi-label-blackout" class="midi-label">—</span>
+        <button id="midi-learn-blackout" class="btn btn-midi-learn">Learn</button>
+        <button id="midi-clear-blackout" class="btn btn-midi-clear">✕</button>
+      </div>
+      <div class="row" style="margin-top:6px">
+        <span style="flex:1;color:var(--text-muted);font-size:12px">Shake</span>
+        <span id="midi-label-shake" class="midi-label">—</span>
+        <button id="midi-learn-shake" class="btn btn-midi-learn">Learn</button>
+        <button id="midi-clear-shake" class="btn btn-midi-clear">✕</button>
+      </div>
+      <div class="row" style="margin-top:6px">
+        <span style="flex:1;color:var(--text-muted);font-size:12px">Zoom Punch</span>
+        <span id="midi-label-zoom-punch" class="midi-label">—</span>
+        <button id="midi-learn-zoom-punch" class="btn btn-midi-learn">Learn</button>
+        <button id="midi-clear-zoom-punch" class="btn btn-midi-clear">✕</button>
+      </div>
+      <div class="row" style="margin-top:6px">
+        <span style="flex:1;color:var(--text-muted);font-size:12px">Color Crush</span>
+        <span id="midi-label-color-crush" class="midi-label">—</span>
+        <button id="midi-learn-color-crush" class="btn btn-midi-learn">Learn</button>
+        <button id="midi-clear-color-crush" class="btn btn-midi-clear">✕</button>
+      </div>
+      <div class="row" style="margin-top:6px">
+        <span style="flex:1;color:var(--text-muted);font-size:12px">Blur Pulse</span>
+        <span id="midi-label-tunnel" class="midi-label">—</span>
+        <button id="midi-learn-tunnel" class="btn btn-midi-learn">Learn</button>
+        <button id="midi-clear-tunnel" class="btn btn-midi-clear">✕</button>
+      </div>
+      <div class="row" style="margin-top:6px">
+        <span style="flex:1;color:var(--text-muted);font-size:12px">Random Preset</span>
+        <span id="midi-label-random" class="midi-label">—</span>
+        <button id="midi-learn-random" class="btn btn-midi-learn">Learn</button>
+        <button id="midi-clear-random" class="btn btn-midi-clear">✕</button>
+      </div>
+      <div class="row" style="margin-top:6px">
+        <span style="flex:1;color:var(--text-muted);font-size:12px">Generate New</span>
+        <span id="midi-label-generate" class="midi-label">—</span>
+        <button id="midi-learn-generate" class="btn btn-midi-learn">Learn</button>
+        <button id="midi-clear-generate" class="btn btn-midi-clear">✕</button>
+      </div>
+      <div class="row" style="margin-top:6px">
+        <span style="flex:1;color:var(--text-muted);font-size:12px">Randomize Params</span>
+        <span id="midi-label-randomize" class="midi-label">—</span>
+        <button id="midi-learn-randomize" class="btn btn-midi-learn">Learn</button>
+        <button id="midi-clear-randomize" class="btn btn-midi-clear">✕</button>
+      </div>
+      <div class="row" style="margin-top:6px">
+        <span style="flex:1;color:var(--text-muted);font-size:12px">Sensitivity</span>
+        <span id="midi-label-sensitivity" class="midi-label">—</span>
+        <button id="midi-learn-sensitivity" class="btn btn-midi-learn">Learn</button>
+        <button id="midi-clear-sensitivity" class="btn btn-midi-clear">✕</button>
+      </div>
+      <div class="row" style="margin-top:6px">
+        <span style="flex:1;color:var(--text-muted);font-size:12px">Send Random Text</span>
+        <span id="midi-label-random-text" class="midi-label">—</span>
+        <button id="midi-learn-random-text" class="btn btn-midi-learn">Learn</button>
+        <button id="midi-clear-random-text" class="btn btn-midi-clear">✕</button>
+      </div>
+    </div>
+  </section>
+
+  </div><!-- end #scroll-area -->
+
+  <!-- Remote Control — pinned to bottom of window -->
+  <section class="section collapsible-section" id="sec-remote">
+    <div class="section-title section-toggle" data-sec="remote">
+      <span class="chevron">▾</span> 📱 Remote Control
+    </div>
+    <div class="section-body">
+      <!-- URL + QR — switches between local IP and cloud URL -->
+      <div id="remote-url-label" style="font-size:12px;color:#999;margin-bottom:8px;line-height:1.5">
+        Open on any device on the same Wi-Fi:
+      </div>
+      <div id="remote-url" style="font-family:monospace;font-size:13px;font-weight:600;color:#3a7bd5;background:#1c1c1e;border-radius:8px;padding:10px 12px;word-break:break-all;margin-bottom:6px;cursor:pointer" title="Click to copy">Loading…</div>
+      <span id="remote-copy-tip" style="font-size:10px;color:#34c759;opacity:0;transition:opacity .3s;display:block;margin-bottom:8px">Copied!</span>
+      <img id="remote-qr" src="" alt="QR Code" style="display:block;border-radius:8px;margin:0 auto 6px;border:2px solid #2c2c2e" width="160" height="160">
+      <div id="remote-qr-label" style="font-size:10px;color:#6e6e73;text-align:center;margin-bottom:10px">Scan to open on a phone</div>
+      <!-- Local IP fallback shown when tunnel is active -->
+      <div id="remote-local-wrap" style="display:none;padding:7px 10px;background:#1a1a1a;border-radius:8px;margin-bottom:10px">
+        <div style="font-size:10px;color:#555;margin-bottom:2px">Same-WiFi fallback:</div>
+        <div id="remote-local-url" style="font-family:monospace;font-size:11px;color:#555;word-break:break-all;cursor:pointer" title="Click to copy"></div>
+      </div>
+
+      <div style="border-top:1px solid #2a2a2e;margin:4px 0 10px"></div>
+
+      <!-- Password -->
+      <div style="display:flex;gap:6px;margin-bottom:8px">
+        <input type="password" id="tunnel-password" placeholder="Remote control password (optional)…"
+          style="flex:1;font-size:12px;padding:7px 10px;background:#1c1c1e;color:#f5f5f7;border:1px solid #333;border-radius:8px;font-family:inherit">
+        <button id="btn-tunnel-pw-save" class="btn-small">Save</button>
+      </div>
+
+      <!-- Tunnel toggle -->
+      <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px">
+        <button id="btn-tunnel-toggle" class="btn" style="flex:1;font-size:12px;padding:8px">🌐 Enable Internet Access</button>
+        <span id="tunnel-status-dot" style="width:9px;height:9px;border-radius:50%;background:#555;flex-shrink:0"></span>
+      </div>
+      <div id="tunnel-status-label" style="font-size:11px;color:#888">Off — QR code works on same Wi-Fi only</div>
+    </div>
+  </section>
+
+  <!-- Photo lightbox -->
+  <div id="photo-lightbox" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.88);align-items:center;justify-content:center;flex-direction:column;gap:12px" onclick="closePhotoLightbox()">
+    <img id="photo-lightbox-img" src="" alt="" style="max-width:90vw;max-height:80vh;border-radius:6px;object-fit:contain;box-shadow:0 8px 40px rgba(0,0,0,0.7)">
+    <div id="photo-lightbox-caption" style="font-size:14px;color:#ccc;font-style:italic;text-align:center;max-width:80vw"></div>
+    <div style="font-size:11px;color:#555;margin-top:4px">Click anywhere to close</div>
+  </div>
+
+  <script src="../dist/controls.bundle.js"></script>
+</body>
+</html>

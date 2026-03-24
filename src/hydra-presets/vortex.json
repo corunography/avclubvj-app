@@ -1,0 +1,4 @@
+{
+  "name": "Vortex",
+  "code": "src(o0)\n  .modulateRotate(\n    osc(() => 3 + p1 * 8, 0.1),\n    () => 0.5 + p2 * 1.5 + a.fft[0] * 0.8\n  )\n  .scale(() => 0.993 + a.fft[0] * 0.022)\n  .rotate(() => 0.015 * p3 * 3 + a.fft[1] * 0.025)\n  .hue(() => 0.005 * p3 * 2 + a.fft[2] * 0.02)\n  .saturate(() => 2.2 + p5 * 2.5 + a.fft[0] * p5)\n  .brightness(() => -0.012 + a.fft[0] * 0.01)\n  .out(o0)"
+}

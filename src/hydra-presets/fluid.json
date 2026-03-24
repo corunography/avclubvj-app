@@ -1,0 +1,4 @@
+{
+  "name": "Fluid",
+  "code": "src(o0)\n  .modulateScale(\n    noise(() => 0.8 + p1 * 2, () => 0.15 + p3 * 0.3),\n    () => 0.1 + p2 * 0.22 + a.fft[0] * 0.15\n  )\n  .modulateRotate(\n    noise(() => 0.6 + p1 * 2, () => 0.1 + p3 * 0.2),\n    () => 0.25 + p1 * 0.3 + a.fft[1] * 0.35\n  )\n  .hue(() => 0.004 * p3 * 3 + a.fft[2] * 0.02)\n  .saturate(() => 2 + p5 * 2.5 + a.fft[0] * p5)\n  .brightness(() => -0.008 + a.fft[0] * 0.007)\n  .out(o0)"
+}

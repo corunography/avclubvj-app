@@ -1,0 +1,73 @@
+{
+  "name": "butterchurn-vj",
+  "version": "1.0.0",
+  "description": "Open-source AV Club VJ tool with preset management and OBS output",
+  "main": "main.js",
+  "scripts": {
+    "build": "webpack --mode development",
+    "start": "npm run build && electron .",
+    "dev": "concurrently \"webpack --mode development --watch\" \"sleep 4 && electron .\"",
+    "dist": "webpack --mode production && electron-builder"
+  },
+  "dependencies": {
+    "butterchurn": "^2.6.7",
+    "butterchurn-presets": "^2.4.7",
+    "butterchurn-presets-baron": "^1.5.1",
+    "butterchurn-presets-weekly": "^0.0.4",
+    "cloudflared": "^0.7.1",
+    "hydra-synth": "^1.4.0",
+    "milkdrop-preset-converter": "^0.1.2"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "electron": "^28.3.3",
+    "electron-builder": "^24.13.3",
+    "node-addon-api": "^8.6.0",
+    "webpack": "^5.97.1",
+    "webpack-cli": "^5.1.4"
+  },
+  "build": {
+    "appId": "com.avclubvj.app",
+    "productName": "AV Club VJ",
+    "icon": "assets/icon.icns",
+    "mac": {
+      "category": "public.app-category.music",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64"
+          ]
+        }
+      ],
+      "identity": null
+    },
+    "files": [
+      "dist/**",
+      "src/*.html",
+      "src/*.css",
+      "main.js",
+      "preload.js",
+      "package.json",
+      "build/Release/syphon_addon.node",
+      "build/Release/ndi_addon.node"
+    ],
+    "asarUnpack": [
+      "build/Release/syphon_addon.node",
+      "build/Release/ndi_addon.node",
+      "node_modules/cloudflared/bin/**"
+    ],
+    "extraResources": [
+      {
+        "from": "tens-of-thousands-milkdrop-presets-for-butterchurn-master/BONUS_milkdrop-presets-for-butterchurn",
+        "to": "bonus-presets",
+        "filter": [
+          "**/*.json"
+        ]
+      }
+    ],
+    "directories": {
+      "output": "release"
+    }
+  }
+}
