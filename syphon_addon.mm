@@ -203,6 +203,9 @@ Napi::Value StartOverlayServer(const Napi::CallbackInfo& info) {
         name = info[0].As<Napi::String>().Utf8Value();
 
     @autoreleasepool {
+        // Ensure app name is set so Syphon clients don't show "Electron"
+        setenv("SYPHON_APP_NAME", "AV Club VJ", 1);
+
         // Reuse existing device/queue or create them if primary server not yet started
         if (!EnsureDevice(env)) return env.Null();
 

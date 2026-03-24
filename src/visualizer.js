@@ -104,7 +104,6 @@ let overlayAlphaCtx       = null;
 let overlayAlphaPixelBuf  = null;    // Uint8Array, reused each frame
 let overlayAlphaBufW      = 0;
 let overlayAlphaBufH      = 0;
-let _overlayWasActive     = false;   // dirty flag: flush one trailing transparent frame
 let _overlayFrameCounter  = 0;       // 30fps throttle: skip every other frame
 
 // Trivia visibility flags for overlay channel — DOM opacity isn't easily polled
@@ -2204,9 +2203,9 @@ function drawPhotoToCanvas(ctx, w, h) {
 // the "AV Club VJ Overlay" Syphon server. Vertical flip is done in the native layer.
 function renderAlphaOverlayFrame(w, h) {
   // 30fps throttle — text, photos, and trivia don't need 60fps updates.
-  // Skip every other frame; still send the trailing transparent frame when going idle.
+  // Always publish a frame (even when transparent) so the Syphon stream stays live.
   _overlayFrameCounter = (_overlayFrameCounter + 1) & 1;
-  if (_overlayFrameCounter !== 0 && _overlayWasActive) return;
+  if (_overlayFrameCounter !== 0) return;
 
   // Lazy-allocate canvas + pixel buffer when size changes
   if (!overlayAlphaCanvas || overlayAlphaBufW !== w || overlayAlphaBufH !== h) {
@@ -2219,27 +2218,17 @@ function renderAlphaOverlayFrame(w, h) {
     overlayAlphaBufH = h;
   }
 
-  const active = isOverlayChannelActive();
-
-  // Dirty-flag optimisation: skip entirely if nothing visible this frame OR last frame.
-  // On the first frame after going inactive, we still send one clean transparent frame
-  // so downstream apps (Resolume etc.) see a proper reset rather than a frozen last frame.
-  if (!active && !_overlayWasActive) return;
-  _overlayWasActive = active;
-
   const ctx = overlayAlphaCtx;
   ctx.clearRect(0, 0, w, h); // transparent background — alpha=0 everywhere by default
 
-  // Layer 1: marquee + logos from overlayCanvas (already has transparent background)
+  // Draw visible overlay layers (no-ops when nothing active)
   if (overlayHasContent) ctx.drawImage(overlayCanvas, 0, 0);
-
-  // Layer 2: DOM overlay equivalents
   if (triviaOverlayVisible || triviaScoreboardVisible) drawTriviaToCanvas(ctx, w, h);
   if (qrOverlayShowing)  drawQRToCanvas(ctx, w, h);
   if (photoPlaying)      drawPhotoToCanvas(ctx, w, h);
 
-  // Extract pixels (top-left origin — native layer performs the vertical flip,
-  // same convention as the main Syphon channel)
+  // Always ship the frame — keeps the Syphon stream live in Resolume/VDMX/etc.
+  // even when all overlays are hidden (transparent frame = pass-through in the client).
   overlayAlphaPixelBuf.set(ctx.getImageData(0, 0, w, h).data);
   window.api.syphonOverlaySendFrame(overlayAlphaPixelBuf.buffer, w, h);
 }
@@ -2361,7 +2350,6 @@ window.api.onMessage((msg) => {
 
     case 'syphon-overlay-disable':
       syphonOverlayEnabled  = false;
-      _overlayWasActive     = false;
       _overlayFrameCounter  = 0;
       overlayAlphaPixelBuf  = null; // free memory
       overlayAlphaCanvas    = null;
