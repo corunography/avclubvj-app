@@ -105,6 +105,7 @@ let overlayAlphaPixelBuf  = null;    // Uint8Array, reused each frame
 let overlayAlphaBufW      = 0;
 let overlayAlphaBufH      = 0;
 let _overlayWasActive     = false;   // dirty flag: flush one trailing transparent frame
+let _overlayFrameCounter  = 0;       // 30fps throttle: skip every other frame
 
 // Trivia visibility flags for overlay channel — DOM opacity isn't easily polled
 let triviaOverlayVisible    = false;
@@ -403,7 +404,9 @@ function syphonAsyncFrame(gl) {
     gl.bindBuffer(gl.PIXEL_PACK_BUFFER, readPBO);
     gl.getBufferSubData(gl.PIXEL_PACK_BUFFER, 0, syphonPixelBuf);
     gl.bindBuffer(gl.PIXEL_PACK_BUFFER, null);
-    compositeOverlayIntoSyphonBuf(w, h);
+    // When the overlay channel is active, keep the main output as pure Butterchurn visuals.
+    // Overlays live exclusively on the alpha/overlay Syphon server.
+    if (!syphonOverlayEnabled) compositeOverlayIntoSyphonBuf(w, h);
     window.api.syphonSendFrame(syphonPixelBuf.buffer, w, h);
     // Overlay-only channel (transparent alpha) — runs independently of main channel
     if (syphonOverlayEnabled) renderAlphaOverlayFrame(w, h);
@@ -2199,10 +2202,17 @@ function drawPhotoToCanvas(ctx, w, h) {
 // Composes all visible overlay content on a transparent background and sends to
 // the "AV Club VJ Overlay" Syphon server. Vertical flip is done in the native layer.
 function renderAlphaOverlayFrame(w, h) {
+  // 30fps throttle — text, photos, and trivia don't need 60fps updates.
+  // Skip every other frame; still send the trailing transparent frame when going idle.
+  _overlayFrameCounter = (_overlayFrameCounter + 1) & 1;
+  if (_overlayFrameCounter !== 0 && _overlayWasActive) return;
+
   // Lazy-allocate canvas + pixel buffer when size changes
   if (!overlayAlphaCanvas || overlayAlphaBufW !== w || overlayAlphaBufH !== h) {
     overlayAlphaCanvas   = new OffscreenCanvas(w, h);
-    overlayAlphaCtx      = overlayAlphaCanvas.getContext('2d');
+    // willReadFrequently forces software rasterization, eliminating the GPU→CPU
+    // readback stall on getImageData() (~4-8ms → <1ms).
+    overlayAlphaCtx      = overlayAlphaCanvas.getContext('2d', { willReadFrequently: true });
     overlayAlphaPixelBuf = new Uint8Array(w * h * 4);
     overlayAlphaBufW = w;
     overlayAlphaBufH = h;
@@ -2351,6 +2361,7 @@ window.api.onMessage((msg) => {
     case 'syphon-overlay-disable':
       syphonOverlayEnabled  = false;
       _overlayWasActive     = false;
+      _overlayFrameCounter  = 0;
       overlayAlphaPixelBuf  = null; // free memory
       overlayAlphaCanvas    = null;
       overlayAlphaCtx       = null;

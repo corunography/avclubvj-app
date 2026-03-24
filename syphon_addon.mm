@@ -32,6 +32,9 @@ static id<MTLTexture>      g_overlay_texture = nil;
 static int g_ovTexW = 0;
 static int g_ovTexH = 0;
 
+// Persistent flip buffer — avoids heap allocation on every frame
+static std::vector<uint8_t> g_flipBuf;
+
 // ── Shared helpers ────────────────────────────────────────────────────────────
 
 static uint8_t* ExtractPixelPtr(const Napi::Value& val) {
@@ -46,12 +49,13 @@ static uint8_t* ExtractPixelPtr(const Napi::Value& val) {
 
 // Upload pixels to a Metal texture and publish via a SyphonMetalServer.
 // Both the primary and overlay servers use this path — no duplication.
-// pixels: RGBA top-left origin (Canvas2D / GL already handled in JS).
-// Performs vertical flip here because GL/Canvas2D origin is bottom-left.
+//
+// shouldFlip = true  → Canvas2D top-left origin; flip rows so Syphon gets bottom-left.
+// shouldFlip = false → WebGL readPixels bottom-left origin; upload directly; no flip needed.
 static bool PublishPixelsToServer(
     SyphonMetalServer* server,
     id<MTLTexture> __strong * texRef, int* texWRef, int* texHRef,
-    uint8_t* pixels, int w, int h)
+    uint8_t* pixels, int w, int h, bool shouldFlip)
 {
     if (!server || !g_device) return false;
 
@@ -71,17 +75,21 @@ static bool PublishPixelsToServer(
         *texHRef = h;
     }
 
-    // Flip rows vertically: renderer sends top-left origin, Syphon expects bottom-left
-    std::vector<uint8_t> flipped(totalBytes);
-    for (int row = 0; row < h; ++row) {
-        memcpy(flipped.data() + (size_t)row * bytesPerRow,
-               pixels          + (size_t)(h - 1 - row) * bytesPerRow,
-               bytesPerRow);
+    const uint8_t* uploadPtr = pixels;
+    if (shouldFlip) {
+        // Flip rows vertically using persistent buffer (no heap allocation per frame)
+        if (g_flipBuf.size() < totalBytes) g_flipBuf.resize(totalBytes);
+        for (int row = 0; row < h; ++row) {
+            memcpy(g_flipBuf.data() + (size_t)row * bytesPerRow,
+                   pixels            + (size_t)(h - 1 - row) * bytesPerRow,
+                   bytesPerRow);
+        }
+        uploadPtr = g_flipBuf.data();
     }
 
     [*texRef replaceRegion:MTLRegionMake2D(0, 0, (NSUInteger)w, (NSUInteger)h)
                mipmapLevel:0
-                 withBytes:flipped.data()
+                 withBytes:uploadPtr
                bytesPerRow:bytesPerRow];
 
     id<MTLCommandBuffer> cmd = [g_queue commandBuffer];
@@ -152,7 +160,8 @@ Napi::Value PublishFrame(const Napi::CallbackInfo& info) {
     int h = info[2].As<Napi::Number>().Int32Value();
 
     @autoreleasepool {
-        bool ok = PublishPixelsToServer(g_server, &g_texture, &g_texW, &g_texH, pixels, w, h);
+        // WebGL readPixels is bottom-left origin — no flip needed (shouldFlip = false)
+        bool ok = PublishPixelsToServer(g_server, &g_texture, &g_texW, &g_texH, pixels, w, h, false);
         return Napi::Boolean::New(env, ok);
     }
 }
@@ -225,8 +234,9 @@ Napi::Value PublishOverlayFrame(const Napi::CallbackInfo& info) {
     int h = info[2].As<Napi::Number>().Int32Value();
 
     @autoreleasepool {
+        // Canvas2D getImageData is top-left origin — flip to bottom-left for Syphon (shouldFlip = true)
         bool ok = PublishPixelsToServer(
-            g_overlay_server, &g_overlay_texture, &g_ovTexW, &g_ovTexH, pixels, w, h);
+            g_overlay_server, &g_overlay_texture, &g_ovTexW, &g_ovTexH, pixels, w, h, true);
         return Napi::Boolean::New(env, ok);
     }
 }
